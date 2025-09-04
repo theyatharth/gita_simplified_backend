@@ -17,9 +17,16 @@ const registerUser = async (req, res) => {
   } = req.body;
 
   try {
-    const userExists = await pool.query('SELECT * FROM customer WHERE email = $1', [email]);
-    if (userExists.rows.length > 0) {
+    // Check if email exists
+    const emailExists = await pool.query('SELECT 1 FROM customer WHERE email = $1', [email]);
+    if (emailExists.rows.length > 0) {
       return res.status(400).json({ message: 'Email already exists' });
+    }
+
+    // Check if phone exists
+    const phoneExists = await pool.query('SELECT 1 FROM customer WHERE phone = $1', [phone]);
+    if (phoneExists.rows.length > 0) {
+      return res.status(400).json({ message: 'Phone already exists' });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -53,25 +60,60 @@ const registerUser = async (req, res) => {
 
 
 const loginUser = async (req, res) => {
-  const { email, password } = req.body;
+  const { email, phone, password } = req.body;
+
   try {
-    const user = await pool.query('SELECT * FROM customer WHERE email = $1', [email]);
-    if (user.rows.length === 0) {
-      return res.status(400).json({ message: 'Invalid email or password' });
+    // ✅ Password is required
+    if (!password) {
+      return res.status(400).json({ message: "Password is required" });
     }
 
-    const validPassword = await bcrypt.compare(password, user.rows[0].password_hash);
+    // ✅ Require either email or phone
+    if (!email && !phone) {
+      return res.status(400).json({ message: "Either email or phone is required" });
+    }
+
+    // ✅ Query by whichever is provided
+    let userQuery, values;
+    if (email) {
+      userQuery = "SELECT * FROM customer WHERE email = $1";
+      values = [email];
+    } else {
+      userQuery = "SELECT * FROM customer WHERE phone = $1";
+      values = [phone];
+    }
+
+    const result = await pool.query(userQuery, values);
+
+    if (result.rows.length === 0) {
+      return res.status(400).json({
+        message: email ? "Invalid email or password" : "Invalid phone or password",
+      });
+    }
+
+    const user = result.rows[0];
+
+    // ✅ Validate password
+    const validPassword = await bcrypt.compare(password, user.password_hash);
     if (!validPassword) {
-      return res.status(400).json({ message: 'Invalid email or password' });
+      return res.status(400).json({ message: "Invalid password" });
     }
 
-    const token = jwt.sign({ id: user.rows[0].id }, process.env.JWT_SECRET, { expiresIn: '1d' });
-    res.json({ message: 'Login successful', token });
+    // ✅ Generate token
+    const token = jwt.sign(
+      { id: user.id },
+      process.env.JWT_SECRET,
+      { expiresIn: "1d" }
+    );
+
+    res.json({ message: "Login successful", token });
+
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Server error' });
+    console.error("Login error:", err);
+    res.status(500).json({ message: "Server error" });
   }
 };
+
 
 const adminLogin = async (req, res) => {
   try {
