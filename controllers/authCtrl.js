@@ -63,31 +63,28 @@ const loginUser = async (req, res) => {
   const { email, phone, password } = req.body;
 
   try {
-    // ✅ Password is required
+    // ✅ Password required
     if (!password) {
       return res.status(400).json({ message: "Password is required" });
     }
 
-    // ✅ Require either email or phone
+    // ✅ Either email or phone required
     if (!email && !phone) {
       return res.status(400).json({ message: "Either email or phone is required" });
     }
 
-    // ✅ Query by whichever is provided
-    let userQuery, values;
-    if (email) {
-      userQuery = "SELECT * FROM customer WHERE email = $1";
-      values = [email];
-    } else {
-      userQuery = "SELECT * FROM customer WHERE phone = $1";
-      values = [phone];
-    }
+    // ✅ Run single query
+    const result = await pool.query(
+      "SELECT * FROM customer WHERE email = $1 OR phone = $2 LIMIT 1",
+      [email || null, phone || null]
+    );
 
-    const result = await pool.query(userQuery, values);
-
+    // ✅ No matching user
     if (result.rows.length === 0) {
       return res.status(400).json({
-        message: email ? "Invalid email or password" : "Invalid phone or password",
+        message: email
+          ? "Invalid email or password"
+          : "Invalid phone or password",
       });
     }
 
@@ -99,7 +96,7 @@ const loginUser = async (req, res) => {
       return res.status(400).json({ message: "Invalid password" });
     }
 
-    // ✅ Generate token
+    // ✅ Generate JWT
     const token = jwt.sign(
       { id: user.id },
       process.env.JWT_SECRET,
@@ -113,6 +110,7 @@ const loginUser = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
 
 
 const adminLogin = async (req, res) => {
