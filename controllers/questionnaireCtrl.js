@@ -1,7 +1,7 @@
 const pool = require("../config/dbConfig");
 
 // ✅ 1. Get All Questions (ordered, with options array)
-const getQuestions = async (req, res) => {
+const getQuestionnaire = async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT id, question_type, question_text,
@@ -186,7 +186,7 @@ const getLatestQuestionnaire = async (req, res) => {
 };
 
 module.exports = {
-  getQuestions,
+  getQuestionnaire,
   submitQuestionnaire,
   getLatestQuestionnaire
 };

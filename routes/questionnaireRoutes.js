@@ -1,9 +1,9 @@
 const express = require("express");
 const router = express.Router();
-const { getQuestions, submitQuestionnaire, getLatestQuestionnaire } = require('../controllers/questionnaireCtrl');
+const { getQuestionnaire, submitQuestionnaire, getLatestQuestionnaire } = require('../controllers/questionnaireCtrl');
 
-router.get('/questions', getQuestions);
-router.post('/submit', submitQuestionnaire);
-router.get('/latest', getLatestQuestionnaire);
+router.get('/all-questions', getQuestionnaire);
+router.post('/submit-response', submitQuestionnaire);
+router.get('/latest-score', getLatestQuestionnaire);
 
 module.exports = router;
